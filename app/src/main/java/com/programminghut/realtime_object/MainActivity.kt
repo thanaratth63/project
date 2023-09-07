@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         imageView = findViewById(R.id.imageView)
         resultTextView = findViewById(R.id.bottomTextView) // Update resultTextView to the bottomTextView ID
 
+
         // กำหนดตัวแปรเพื่อเก็บ TextureView ที่ใช้สำหรับแสดงภาพจากกล้อง
         textureView = findViewById(R.id.textureView)
         // กำหนด Listener สำหรับ TextureView เพื่อเมื่อ SurfaceTexture เตรียมใช้งานได้
@@ -206,15 +207,12 @@ class MainActivity : AppCompatActivity() {
         // ตั้งค่า UI กลับไปที่เริ่มต้น
         resetUI()
     }
-
-    // ตั้งค่า UI กลับไปที่เริ่มต้น
     private fun resetUI() {
-        // ... (Existing code)
-
         // ตั้งค่าค่า isCapturing ให้เป็น false เพื่อรองรับการถ่ายภาพใหม่
         isCapturing = false
-    }
 
+        imageView.visibility = View.GONE
+    }
     // เมื่อเริ่มต้นถ่ายภาพ
     private fun startImageCapture() {
         // เปิดกล้องอีกครั้งและกำหนดค่าใหม่ให้กับทรัพยากรที่เคยถูกคืบควบคุมใน stopImageCapture()
@@ -290,6 +288,7 @@ class MainActivity : AppCompatActivity() {
                     override fun onConfigured(session: CameraCaptureSession) {
                         // กำหนดให้กล้องแสดงภาพตาม CaptureRequest ที่กำหนดไว้
                         session.setRepeatingRequest(captureRequest.build(), null, null)
+                        // เรียกใช้งานฟังก์ชันสำหรับตรวจจับวัตถุและแสดงผลลัพธ์
                     }
 
                     override fun onConfigureFailed(session: CameraCaptureSession) {}
@@ -370,8 +369,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ขออนุญาตใช้งานกล้อง
-    private val requestCode = 101
-
     fun getPermission() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.CAMERA), 101)
