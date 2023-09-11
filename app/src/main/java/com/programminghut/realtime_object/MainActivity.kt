@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.programminghut.realtime_object
 
 import android.Manifest
@@ -84,6 +86,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         // ตรวจสอบและขออนุญาตใช้งานกล้อง
         getPermission()
+        isCapturing
 
         // โหลดรายการชื่อวัตถุที่ตรวจจับได้จากไฟล์ labels.txt
         labels = FileUtil.loadLabels(this, "labels.txt")
@@ -210,19 +213,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
     // เมื่อกดปุ่มที่ใช้สำหรับเปิดหรือปิดฟังก์ชันถ่ายภาพ
+// เมื่อกดที่หน้าจอครั้งที่สอง
     private fun toggleCapture() {
         if (isCaptureEnabled) {
             isCapturing = !isCapturing
             if (isCapturing) {
                 // เมื่อเปิดฟังก์ชันถ่ายภาพ ให้เริ่มต้นถ่ายภาพ
-                openCamera() // เริ่มตรวจจับวัตถุใหม่
+                startImageCapture() // เริ่มการตรวจจับวัตถุและแสดงผลลัพธ์
             } else {
                 // เมื่อปิดฟังก์ชันถ่ายภาพ ให้หยุดถ่ายภาพ
                 stopImageCapture()
             }
         }
     }
-
 
     // เมื่อหยุดถ่ายภาพ
     private fun stopImageCapture() {
@@ -239,6 +242,7 @@ class MainActivity : AppCompatActivity() {
 
         // ตั้งค่า UI กลับไปที่เริ่มต้น
         resetUI()
+        isCapturing = false
     }
 
     private fun resetUI() {
@@ -249,10 +253,94 @@ class MainActivity : AppCompatActivity() {
     }
 
     // เมื่อเริ่มต้นถ่ายภาพ
+// เพิ่มฟังก์ชันเพิ่มเติมสำหรับการถ่ายภาพเมื่อมีการกดที่หน้าจอ
     private fun startImageCapture() {
-        // เปิดกล้องอีกครั้งและกำหนดค่าใหม่ให้กับทรัพยากรที่เคยถูกคืบควบคุมใน stopImageCapture()
-        openCamera()
+        // กำหนดให้กล้องเก็บรูปภาพจาก TextureView และเมื่อมีการอัปเดตภาพใน TextureView ให้ทำการประมวลผลและบันทึกภาพถ่าย
+        textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+                openCamera()
+            }
+
+            override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+            }
+
+            override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean {
+                return false
+            }
+
+            override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
+                // นี่คือส่วนของการประมวลผลภาพและบันทึกภาพถ่าย
+                // เมื่อภาพใน TextureView อัปเดต ให้นำภาพไปประมวลผลตรวจจับวัตถุและแสดงผลลัพธ์
+                bitmap = textureView.bitmap!!
+                var image = TensorImage.fromBitmap(bitmap)
+                image = imageProcessor.process(image)
+
+                val outputs = model.process(image)
+                val locations = outputs.locationsAsTensorBuffer.floatArray
+                val classes = outputs.classesAsTensorBuffer.floatArray
+                val scores = outputs.scoresAsTensorBuffer.floatArray
+
+                val mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+                val canvas = Canvas(mutable)
+
+                val h = mutable.height
+                val w = mutable.width
+                paint.textSize = h / 15f
+                paint.strokeWidth = h / 85f
+                var x = 0
+                scores.forEachIndexed { index, fl ->
+                    x = index
+                    x *= 4
+                    if (fl > 0.5) {
+                        paint.color = colors[index]
+                        paint.style = Paint.Style.STROKE
+                        canvas.drawRect(
+                            RectF(
+                                locations[x + 1] * w,
+                                locations[x] * h,
+                                locations[x + 3] * w,
+                                locations[x + 2] * h
+                            ), paint
+                        )
+                        paint.style = Paint.Style.FILL
+                        if (x < classes.size) {
+                            canvas.drawText(
+                                "${labels[classes[x].toInt()]} ${fl.toString()}",
+                                locations[x + 1] * w,
+                                locations[x] * h,
+                                paint
+                            )
+                        }
+                    }
+                }
+
+                imageView.setImageBitmap(mutable)
+
+                val resultMap = mutableMapOf<String, Int>()
+
+                scores.forEachIndexed { index, fl ->
+                    x = index
+                    x *= 4
+                    if (fl > 0.5) {
+                        // คำนวณชื่อวัตถุและคะแนนของวัตถุที่ตรวจจับได้
+                        val detectedLabel = labels[classes[x].toInt()]
+                        val score = fl.toString()
+
+                        // เก็บจำนวนของวัตถุแต่ละชื่อใน resultMap
+                        if (resultMap.containsKey(detectedLabel)) {
+                            resultMap[detectedLabel] = resultMap[detectedLabel]!! + 1
+                        } else {
+                            resultMap[detectedLabel] = 1
+                        }
+                    }
+                }
+
+                // อัปเดต TextView ที่ใช้แสดงผลลัพธ์ของการตรวจจับวัตถุ
+                showDetectionResults(resultMap)
+            }
+        }
     }
+
 
     // แสดงผลลัพธ์ของการตรวจจับวัตถุใน TextView
     private fun showDetectionResults(resultMap: Map<String, Int>) {
@@ -345,62 +433,6 @@ class MainActivity : AppCompatActivity() {
             handler
         )
     }
-
-    // ถ่ายภาพ
-//    private fun captureImage() {
-//        // หยุดถ่ายภาพกรณีก่อนหน้านี้ทำงานไม่สำเร็จ
-//        if (!isCaptureEnabled) {
-//            return // Prevent capturing while processing previous image
-//        }
-//
-//        // สร้าง CameraCaptureRequest สำหรับการถ่ายภาพ (TEMPLATE_STILL_CAPTURE)
-//        val captureRequestBuilder =
-//            cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
-//
-//        // สร้าง SurfaceTexture จาก TextureView และกำหนด Surface ของนั้นให้กับ CameraCaptureRequest
-//        val surfaceTexture = textureView.surfaceTexture
-//        val surface = Surface(surfaceTexture)
-//        captureRequestBuilder.addTarget(surface)
-//
-//        // กำหนดการหมุนภาพให้เป็นตามรูปที่เคยคำนวณไว้
-//        val rotation = windowManager.defaultDisplay.rotation
-//        captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, getOrientation(rotation))
-//
-//        // สร้าง CaptureCallback สำหรับตรวจสอบสถานะการถ่ายภาพ
-//        val captureCallback = object : CaptureCallback() {
-//            override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
-//                // Image captured successfully
-//                isCaptureEnabled = true // Enable capturing again
-//            }
-//
-//            override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
-//                // Image capture failed
-//                isCaptureEnabled = true
-//            }
-//        }
-//
-//        // สร้าง HandlerThread และ Handler สำหรับการถ่ายภาพ
-//        val handlerThread = HandlerThread("ImageCapture")
-//        handlerThread.start()
-//        val captureHandler = Handler(handlerThread.looper)
-//
-//        // สร้าง CameraCaptureSession สำหรับควบคุมการถ่ายภาพ
-//        cameraDevice.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
-//            override fun onConfigured(session: CameraCaptureSession) {
-//                try {
-//                    // เริ่มถ่ายภาพ
-//                    session.capture(captureRequestBuilder.build(), captureCallback, captureHandler)
-//                } catch (e: CameraAccessException) {
-//                    e.printStackTrace()
-//                }
-//            }
-//
-//            override fun onConfigureFailed(session: CameraCaptureSession) {
-//                // ถ้าการกำหนดค่า CameraCaptureSession ไม่สำเร็จ ให้เปิดใช้งานการถ่ายภาพอีกครั้ง
-//                isCaptureEnabled = true // Enable capturing again
-//            }
-//        }, captureHandler)
-//    }
 
     // คำนวณค่าการหมุนภาพของกล้องในแต่ละทิศทาง
     private fun getOrientation(rotation: Int): Int {
