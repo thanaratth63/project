@@ -193,6 +193,7 @@ class MainActivity : AppCompatActivity() {
 
                 // อัปเดต TextView ที่ใช้แสดงผลลัพธ์ของการตรวจจับวัตถุ
                 showDetectionResults(resultMap)
+
             }
         }
 
@@ -208,14 +209,13 @@ class MainActivity : AppCompatActivity() {
             true
         }
     }
-
     // เมื่อกดปุ่มที่ใช้สำหรับเปิดหรือปิดฟังก์ชันถ่ายภาพ
     private fun toggleCapture() {
         if (isCaptureEnabled) {
             isCapturing = !isCapturing
             if (isCapturing) {
                 // เมื่อเปิดฟังก์ชันถ่ายภาพ ให้เริ่มต้นถ่ายภาพ
-                startImageCapture()
+                openCamera() // เริ่มตรวจจับวัตถุใหม่
             } else {
                 // เมื่อปิดฟังก์ชันถ่ายภาพ ให้หยุดถ่ายภาพ
                 stopImageCapture()
@@ -223,13 +223,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     // เมื่อหยุดถ่ายภาพ
     private fun stopImageCapture() {
         if (!isCaptureEnabled) {
             return
         }
         // ปิดกล้องเพื่อหยุดถ่ายภาพ
-        if (this::cameraDevice.isInitialized) {
+        if (this::cameraDevice.isInitialized && isCapturing) {
             cameraDevice.close()
         }
         // คืนทรัพยากรที่ใช้งานของภาพ
