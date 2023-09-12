@@ -86,7 +86,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         // ตรวจสอบและขออนุญาตใช้งานกล้อง
         getPermission()
-        isCapturing
 
         // โหลดรายการชื่อวัตถุที่ตรวจจับได้จากไฟล์ labels.txt
         labels = FileUtil.loadLabels(this, "labels.txt")
@@ -146,13 +145,13 @@ class MainActivity : AppCompatActivity() {
 
                 val h = mutable.height
                 val w = mutable.width
-                paint.textSize = h / 15f
+//                paint.textSize = h / 15f
                 paint.strokeWidth = h / 85f
                 var x = 0
                 scores.forEachIndexed { index, fl ->
                     x = index
                     x *= 4
-                    if (fl > 0.5) {
+                    if (fl > 0.8) {
                         paint.color = colors[index]
                         paint.style = Paint.Style.STROKE
                         canvas.drawRect(
@@ -163,13 +162,14 @@ class MainActivity : AppCompatActivity() {
                                 locations[x + 2] * h
                             ), paint
                         )
+
                         paint.style = Paint.Style.FILL
-                        canvas.drawText(
-                            "${labels[classes[x].toInt()]} ${fl.toString()}",
-                            locations[x + 1] * w,
-                            locations[x] * h,
-                            paint
-                        )
+//                        canvas.drawText(
+//                            "${labels[classes[x].toInt()]} ${fl.toString()}",
+//                            locations[x + 1] * w,
+//                            locations[x] * h,
+//                            paint
+//                        )
                     }
                 }
 
@@ -241,8 +241,9 @@ class MainActivity : AppCompatActivity() {
         textureView.surfaceTextureListener = null
 
         // ตั้งค่า UI กลับไปที่เริ่มต้น
-        resetUI()
+//        resetUI()
         isCapturing = false
+
     }
 
     private fun resetUI() {
@@ -285,7 +286,7 @@ class MainActivity : AppCompatActivity() {
 
                 val h = mutable.height
                 val w = mutable.width
-                paint.textSize = h / 15f
+//                paint.textSize = h / 15f
                 paint.strokeWidth = h / 85f
                 var x = 0
                 scores.forEachIndexed { index, fl ->
@@ -303,14 +304,14 @@ class MainActivity : AppCompatActivity() {
                             ), paint
                         )
                         paint.style = Paint.Style.FILL
-                        if (x < classes.size) {
-                            canvas.drawText(
-                                "${labels[classes[x].toInt()]} ${fl.toString()}",
-                                locations[x + 1] * w,
-                                locations[x] * h,
-                                paint
-                            )
-                        }
+//                        if (x < classes.size) {
+//                            canvas.drawText(
+//                                "${labels[classes[x].toInt()]} ${fl.toString()}",
+//                                locations[x + 1] * w,
+//                                locations[x] * h,
+//                                paint
+//                            )
+//                        }
                     }
                 }
 
