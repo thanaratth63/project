@@ -1,0 +1,3 @@
+0 cat
+1 labtop
+2 mouse

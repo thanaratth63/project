@@ -130,6 +130,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
+                // นี่คือส่วนของการประมวลผลภาพและบันทึกภาพถ่าย
                 // เมื่อภาพใน TextureView อัปเดต ให้นำภาพไปประมวลผลตรวจจับวัตถุและแสดงผลลัพธ์
                 bitmap = textureView.bitmap!!
                 var image = TensorImage.fromBitmap(bitmap)
@@ -145,59 +146,65 @@ class MainActivity : AppCompatActivity() {
 
                 val h = mutable.height
                 val w = mutable.width
-//                paint.textSize = h / 15f
+                paint.textSize = h / 20f
                 paint.strokeWidth = h / 85f
-                var x = 0
-                scores.forEachIndexed { index, fl ->
-                    x = index
-                    x *= 4
-                    if (fl > 0.8) {
-                        paint.color = colors[index]
-                        paint.style = Paint.Style.STROKE
-                        canvas.drawRect(
-                            RectF(
-                                locations[x + 1] * w,
-                                locations[x] * h,
-                                locations[x + 3] * w,
-                                locations[x + 2] * h
-                            ), paint
-                        )
 
-                        paint.style = Paint.Style.FILL
-//                        canvas.drawText(
-//                            "${labels[classes[x].toInt()]} ${fl.toString()}",
-//                            locations[x + 1] * w,
-//                            locations[x] * h,
-//                            paint
-//                        )
+                // สร้างแอร์เรย์ของ label และคะแนนสำหรับวัตถุที่มีคะแนนสูงกว่า 0.6
+                val detectedLabels = mutableListOf<String>()
+                val detectedScores = mutableListOf<Float>()
+
+                scores.forEachIndexed { index, fl ->
+                    if (fl > 0.6) {
+                        val detectedLabel = labels[classes[index].toInt()]
+                        detectedLabels.add(detectedLabel)
+                        detectedScores.add(fl)
                     }
+                }
+
+                // วาดกรอบและแสดง label สำหรับทุกวัตถุที่ตรวจจับได้
+                for (i in detectedLabels.indices) {
+                    val detectedLabel = detectedLabels[i]
+                    val score = detectedScores[i]
+                    paint.color = colors[i]
+                    paint.style = Paint.Style.STROKE
+                    canvas.drawRect(
+                        RectF(
+                            locations[i * 4 + 1] * w,
+                            locations[i * 4] * h,
+                            locations[i * 4 + 3] * w,
+                            locations[i * 4 + 2] * h
+                        ), paint
+                    )
+                    paint.style = Paint.Style.FILL
+                    canvas.drawText(
+                        "$detectedLabel ${score.toString()}",
+                        locations[i * 4 + 1] * w,
+                        locations[i * 4] * h,
+                        paint
+                    )
                 }
 
                 imageView.setImageBitmap(mutable)
 
                 val resultMap = mutableMapOf<String, Int>()
 
-                scores.forEachIndexed { index, fl ->
-                    x = index
-                    x *= 4
-                    if (fl > 0.5) {
-                        // คำนวณชื่อวัตถุและคะแนนของวัตถุที่ตรวจจับได้
-                        val detectedLabel = labels[classes[x].toInt()]
-                        val score = fl.toString()
-
-                        // เก็บจำนวนของวัตถุแต่ละชื่อใน resultMap
-                        if (resultMap.containsKey(detectedLabel)) {
-                            resultMap[detectedLabel] = resultMap[detectedLabel]!! + 1
-                        } else {
-                            resultMap[detectedLabel] = 1
-                        }
+                detectedLabels.forEachIndexed { index, detectedLabel ->
+                    // เก็บจำนวนของวัตถุแต่ละชื่อใน resultMap
+                    if (resultMap.containsKey(detectedLabel)) {
+                        // ถ้ามีอยู่แล้ว ก็เพิ่มค่าของ detectedLabel ไปอีก 1
+                        val currentValue = resultMap[detectedLabel] ?: 0
+                        resultMap[detectedLabel] = currentValue + 1
+                    } else {
+                        // ถ้า detectedLabel ยังไม่มีใน resultMap ให้เพิ่ม detectedLabel เข้าไปและตั้งค่าเป็น 1
+                        resultMap[detectedLabel] = 1
                     }
                 }
 
                 // อัปเดต TextView ที่ใช้แสดงผลลัพธ์ของการตรวจจับวัตถุ
                 showDetectionResults(resultMap)
-
             }
+
+
         }
 
         // กำหนด CameraManager สำหรับเข้าถึงคุณสมบัติของกล้อง
@@ -286,62 +293,66 @@ class MainActivity : AppCompatActivity() {
 
                 val h = mutable.height
                 val w = mutable.width
-//                paint.textSize = h / 15f
+                paint.textSize = h / 20f
                 paint.strokeWidth = h / 85f
-                var x = 0
+
+                // สร้างแอร์เรย์ของ label และคะแนนสำหรับวัตถุที่มีคะแนนสูงกว่า 0.6
+                val detectedLabels = mutableListOf<String>()
+                val detectedScores = mutableListOf<Float>()
+
                 scores.forEachIndexed { index, fl ->
-                    x = index
-                    x *= 4
-                    if (fl > 0.5) {
-                        paint.color = colors[index]
-                        paint.style = Paint.Style.STROKE
-                        canvas.drawRect(
-                            RectF(
-                                locations[x + 1] * w,
-                                locations[x] * h,
-                                locations[x + 3] * w,
-                                locations[x + 2] * h
-                            ), paint
-                        )
-                        paint.style = Paint.Style.FILL
-//                        if (x < classes.size) {
-//                            canvas.drawText(
-//                                "${labels[classes[x].toInt()]} ${fl.toString()}",
-//                                locations[x + 1] * w,
-//                                locations[x] * h,
-//                                paint
-//                            )
-//                        }
+                    if (fl > 0.6) {
+                        val detectedLabel = labels[classes[index].toInt()]
+                        detectedLabels.add(detectedLabel)
+                        detectedScores.add(fl)
                     }
+                }
+
+                // วาดกรอบและแสดง label สำหรับทุกวัตถุที่ตรวจจับได้
+                for (i in detectedLabels.indices) {
+                    val detectedLabel = detectedLabels[i]
+                    val score = detectedScores[i]
+                    paint.color = colors[i]
+                    paint.style = Paint.Style.STROKE
+                    canvas.drawRect(
+                        RectF(
+                            locations[i * 4 + 1] * w,
+                            locations[i * 4] * h,
+                            locations[i * 4 + 3] * w,
+                            locations[i * 4 + 2] * h
+                        ), paint
+                    )
+                    paint.style = Paint.Style.FILL
+                    canvas.drawText(
+                        "$detectedLabel ${score.toString()}",
+                        locations[i * 4 + 1] * w,
+                        locations[i * 4] * h,
+                        paint
+                    )
                 }
 
                 imageView.setImageBitmap(mutable)
 
                 val resultMap = mutableMapOf<String, Int>()
 
-                scores.forEachIndexed { index, fl ->
-                    x = index
-                    x *= 4
-                    if (fl > 0.5) {
-                        // คำนวณชื่อวัตถุและคะแนนของวัตถุที่ตรวจจับได้
-                        val detectedLabel = labels[classes[x].toInt()]
-                        val score = fl.toString()
-
-                        // เก็บจำนวนของวัตถุแต่ละชื่อใน resultMap
-                        if (resultMap.containsKey(detectedLabel)) {
-                            resultMap[detectedLabel] = resultMap[detectedLabel]!! + 1
-                        } else {
-                            resultMap[detectedLabel] = 1
-                        }
+                detectedLabels.forEachIndexed { index, detectedLabel ->
+                    // เก็บจำนวนของวัตถุแต่ละชื่อใน resultMap
+                    if (resultMap.containsKey(detectedLabel)) {
+                        // ถ้ามีอยู่แล้ว ก็เพิ่มค่าของ detectedLabel ไปอีก 1
+                        val currentValue = resultMap[detectedLabel] ?: 0
+                        resultMap[detectedLabel] = currentValue + 1
+                    } else {
+                        // ถ้า detectedLabel ยังไม่มีใน resultMap ให้เพิ่ม detectedLabel เข้าไปและตั้งค่าเป็น 1
+                        resultMap[detectedLabel] = 1
                     }
                 }
 
                 // อัปเดต TextView ที่ใช้แสดงผลลัพธ์ของการตรวจจับวัตถุ
                 showDetectionResults(resultMap)
             }
+
         }
     }
-
 
     // แสดงผลลัพธ์ของการตรวจจับวัตถุใน TextView
     private fun showDetectionResults(resultMap: Map<String, Int>) {
